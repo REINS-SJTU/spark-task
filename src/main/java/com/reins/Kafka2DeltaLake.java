@@ -18,17 +18,23 @@ public class Kafka2DeltaLake {
     private static boolean debug = false;
 
     private static String kafkaIp = "10.0.0.203:9092";
-    private static String topic = "taxi_log_1";
-
-    private static String tableName = "taxi_log";
-    private static String storagePath = String.format("hdfs://10.0.0.203:9000/delta/%s", topic);
+    private static String topic = "dataSource";
 
     private static String warehouseDir = "hdfs://10.0.0.203:9000/delta/warehouse/";
+    private static String tableName = "taxi_version_1";
+    private static String ckptPath = String.format("hdfs://10.0.0.203:9000/ckpt/%s", tableName);
 
     public static void main(String[] args) {
         if (debug) {
             test();
             return;
+        }
+        if (args.length == 1) {
+            // topic, tableName, ...
+            tableName = args[0];
+            log.warn("customed params: kafka topic:{}, tableName:{}", topic, tableName);
+        } else {
+            log.warn("use default params.");
         }
         SparkSession spark = SparkSession.builder()
                 .config("spark.master", "local")
@@ -77,13 +83,15 @@ public class Kafka2DeltaLake {
 
         Dataset<Row> logStringDf = df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)");
         Dataset<Row> logDf = logStringDf.select(from_json(col("value"), schema).as("data")).select("data.*");
+        // logDf.createOrReplaceGlobalTempView("tmp");
+
         try {
             StreamingQuery query = logDf.writeStream()
                     // .queryName("query log from kafka to delta")
                     .format("delta")
                     .outputMode("append")
-                    .option("checkpointLocation", "/home/reins/zzt/code/spark-to-delta/ckpt")
-                    .toTable(topic);
+                    .option("checkpointLocation", ckptPath)
+                    .toTable(tableName);
             // .start(storagePath);
             query.awaitTermination();
         } catch (Exception e) {
