@@ -1,14 +1,31 @@
-SPARK_SUBMIT=/home/reins/zzt/spark-3.1.3-bin-hadoop2.7/bin/spark-submit
-JAR=hdfs://10.0.0.203:9000/spark-to-delta-1.0-SNAPSHOT.jar
-CLASS=com.reins.Kafka2DeltaLake
-TABLE_NAME=taxi_2
+index=$1
+enableRewrite=$2
+mvName=$3
+sql=$4
+
+echo $index
+echo $enableRewrite
+echo $mvName
+echo $sql
+
+SPARK_SUBMIT=/Users/zzt/deploy/spark-3.1-bin-test/bin/spark-submit
+JAR=/Users/zzt/code/spark-to-delta/target/spark-to-delta-1.0-SNAPSHOT.jar
+CLASS=com.reins.SparkTpchSQL
 
 $SPARK_SUBMIT \
---packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2,io.delta:delta-core_2.12:1.0.0,mysql:mysql-connector-java:8.0.16 \
+--packages org.apache.hudi:hudi-spark3-bundle_2.12:0.10.0,mysql:mysql-connector-java:8.0.16 \
 --class $CLASS \
---master spark://reins-PowerEdge-R740-0:7077 \
+--master spark://localhost:7077 \
 --deploy-mode cluster \
---executor-memory 1G \
---num-executors 10 \
-$JAR
-# $TABLE_NAME
+--executor-memory 8G \
+--total-executor-cores 4 \
+--driver-memory 8G \
+--driver-cores 4 \
+$JAR \
+$index \
+$enableRewrite \
+$mvName \
+"$sql"
+
+
+
